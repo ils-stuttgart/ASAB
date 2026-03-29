@@ -22,6 +22,7 @@ import os
 import glob
 from pathlib import Path
 
+from data.scripts.rotate_mnist import RotatedMNISTDataset
 
 
 def one_hot(labels, class_size):
@@ -105,7 +106,6 @@ class CVAE(nn.Module):
 
         return recon, mu, log_var
 
-
 def load_data(data_csv, dataset='adima', single_class=None):
     if dataset == 'mnist':
         transform = transforms.Compose([transforms.ToTensor()])
@@ -142,7 +142,6 @@ def load_data(data_csv, dataset='adima', single_class=None):
     
     return X_train_tensor, X_valid_tensor, X, X_train, y_train
 
-
 # Reconstruction + KL divergence losses summed over all elements and batch
 def loss_function(recon_x, x, mu, logvar):
     #BCE = F.binary_cross_entropy(recon_x, x.view(-1, 784), reduction='sum')
@@ -162,25 +161,27 @@ def learn(epochs, train_loader, vae, loss_fn, optimizer):
     vae_losses = []
     for epoch in range(epochs):
         epoch_loss = 0
-        batch_count = 0
-        train_loss = 0
-        for data, labels in tqdm(train_loader): # per mini-batch, n curves concat with a their classes
-            # forward pass
-            labels = one_hot(labels, 4)
+
+        for batch in tqdm(train_loader):
+            if len(batch) == 3:
+                data, labels, rot_target = batch
+            else:
+                data, labels = batch
+                rot_target = None
+            labels = one_hot(labels, vae.calss_size)
             recon_batch, mu, log_var = vae(data, labels)
-            # backprop
             optimizer.zero_grad()
-            loss = loss_function(recon_batch, data, mu, log_var)
-            loss.backward()
-            train_loss += loss
-            optimizer.step() # gradients reflect all of the samples in the mini-batch
-            
-            epoch_loss += loss.item()
-            batch_count += 1            
+            batch_loss = loss_function(recon_batch, data, mu, log_var)
+
+            batch_loss.backward()
+            optimizer.step()
+            epoch_loss += batch_loss.item()
+
         avg_loss = epoch_loss / len(train_loader)
         print(f"Epoch {epoch+1}/{epochs}, Loss: {avg_loss:.4f}")
         outputs.append((epoch, data, recon_batch))
         vae_losses.append(avg_loss)
+
     return outputs, vae_losses
 
 def plot(ae_losses):
@@ -195,29 +196,37 @@ def main():
     root = Path(__file__).parent.parent.resolve()
     parser = argparse.ArgumentParser()
     parser.add_argument('--model_name', default='vae_')
-    parser.add_argument('--dataset', default='adima')
+    parser.add_argument('--dataset', default='mnist')
     parser.add_argument('--data_csv', default=root/'data/adima/training/fixed_current_training_data.csv')
     parser.add_argument('--model_dir', default='./runs')
     parser.add_argument('--epochs', type=int, default=200)
     parser.add_argument('--batch_size', type=int, default=16)
-    parser.add_argument('--latent_dim', type=int, default=2)
+    parser.add_argument('--latent_dim', type=int, default=12)
     args = parser.parse_args()
 
-    # to train with only green LEDs
-    green_leds = args.data_csv
-    X_train_tensor, X_valid_tensor, X, _, Y_train = load_data(args.data_csv, args.dataset, single_class=None)
-    X_train_tensor_min = X_train_tensor.min()
-    X_train_tensor_max = X_train_tensor.max()
-    X_train_tensor = (X_train_tensor - X_train_tensor_min) / (X_train_tensor_max - X_train_tensor_min + 1e-8)
-    print("Y_train: ", Y_train)
-    label_digits = {"blue": 0, "green": 1, "red": 2, "yellow": 3}
-    y_train_mapped = Y_train.map(label_digits).astype(int)
-    dataset = TensorDataset(torch.tensor(X_train_tensor), torch.tensor(y_train_mapped.values))  # include the labels in the torch dataloader
-    train_loader = DataLoader(dataset, batch_size=16, shuffle=True)
-    valid_loader = DataLoader(X_valid_tensor, batch_size=16, shuffle=False)
+    if args.dataset == 'mnist':
+        dataset = RotatedMNISTDataset(train=True)   # must return: data, label, rot_target
+        train_loader = DataLoader(dataset, batch_size=args.batch_size, shuffle=True)
+        input_dim = 784
+        class_size = 10
+    else:
+        # to train with only green LEDs
+        green_leds = args.data_csv
+        X_train_tensor, X_valid_tensor, X, _, Y_train = load_data(args.data_csv, args.dataset, single_class=None)
+        X_train_tensor_min = X_train_tensor.min()
+        X_train_tensor_max = X_train_tensor.max()
+        X_train_tensor = (X_train_tensor - X_train_tensor_min) / (X_train_tensor_max - X_train_tensor_min + 1e-8)
+        print("Y_train: ", Y_train)
+        label_digits = {"blue": 0, "green": 1, "red": 2, "yellow": 3}
+        y_train_mapped = Y_train.map(label_digits).astype(int)
+        dataset = TensorDataset(X_train_tensor, torch.tensor(y_train_mapped.values))  # include the labels in the torch dataloader
+        train_loader = DataLoader(dataset, batch_size=args.batch_size, shuffle=True)
+        valid_loader = DataLoader(X_valid_tensor, batch_size=16, shuffle=False)
+        input_dim = 19
+        class_size = 4
 
     # training params
-    cvae_model = CVAE(input_dim=X.shape[1], latent_dim=args.latent_dim, dataset="adima", class_size=4)
+    cvae_model = CVAE(input_dim=input_dim, latent_dim=args.latent_dim, dataset="mnist", class_size=class_size)
     cvae_model = cvae_model.train() # set to training mode
     loss_fn = nn.GaussianNLLLoss(reduction='sum', eps=1e-6)  # Learn per-feature variance during reconstruction
     optimizer = optim.Adam(cvae_model.parameters(), lr=1e-3)

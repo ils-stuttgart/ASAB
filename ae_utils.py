@@ -1,7 +1,6 @@
 from pathlib import Path
 
-from agile_ima_ml.autoencoders.train import AE
-from agile_ima_ml.autoencoders.train_vae import VAE
+from train_cvae import CVAE
 # from train import AE
 # from train_vae import VAE
 import torch
@@ -13,11 +12,15 @@ import pandas as pd
 
 
 ## encode ##
-def construct_latent_vectors_list(
+def _construct_latent_vectors_list(
     checkpoint_path: Path,
     X_training_tensor: torch.Tensor,
     input_dim: int,
-    latent_dim: int, ae_type: int):
+    latent_dim: int, 
+    ae_type: int,
+    c: torch.Tensor = None,
+    dataset: str = 'adima',
+    class_size: int = 4):
     """
     extract the full set of latent vectors for X_training_tensor.
 
@@ -26,33 +29,67 @@ def construct_latent_vectors_list(
         X_training_tensor (Tensor)  
         input_dim (int) (encoder input size)  
         latent_dim (int) (bottleneck size)  
+        ae_type (int): 0=AE, 1=VAE, 2=VAE with external classes, 3=CVAE
+        c (Tensor, optional): condition/class tensor for CVAE (one-hot encoded)
+        dataset (str): dataset type for CVAE ('adima' or 'mnist')
+        class_size (int): number of classes for CVAE
 
     return:
         latent_vectors (list containing the latent vector for every sample)
     """
-    if ae_type == 0:
-        AE_loaded = AE(input_dim=input_dim, latent_dim=latent_dim)
+    if ae_type == 3:
+        # Conditional VAE
+        model = CVAE(input_dim=input_dim, latent_dim=latent_dim, dataset=dataset, class_size=class_size)
+        if c is None:
+            raise ValueError("CVAE requires condition tensor 'c' (one-hot encoded classes)")
+    elif ae_type == 0:
+        from agile_ima_ml.autoencoders.train import AE
+        model = AE(input_dim=input_dim, latent_dim=latent_dim)
     elif ae_type == 1:
-        AE_loaded = VAE(input_dim=input_dim, latent_dim=latent_dim)
+        from agile_ima_ml.autoencoders.train_vae import VAE
+        model = VAE(input_dim=input_dim, latent_dim=latent_dim)
+    elif ae_type == 2:
+        # VAE with external conditions (treated as regular VAE for encoding)
+        from agile_ima_ml.autoencoders.train_vae import VAE
+        model = VAE(input_dim=input_dim, latent_dim=latent_dim)
     else:
-        raise Exception("Unknown ae type")
-    print(AE_loaded.encoder)
-    AE_loaded.load_state_dict(torch.load(checkpoint_path))
-    AE_loaded.eval()  # set to evaluation mode
+        raise Exception(f"Unknown ae_type: {ae_type}")
+    
+    print(f"loading model from {checkpoint_path}")
+    model.load_state_dict(torch.load(checkpoint_path))
+    model.eval()  # set to evaluation mode
+    
     with torch.no_grad():
         latent_vectors = []
         for i in range(len(X_training_tensor)):
             sample = X_training_tensor[i]
-            if ae_type == 1:
+            
+            if ae_type == 3:
+                # CVAE: needs both sample and condition
                 sample = sample.unsqueeze(0)
-                _, _, mu, _ = AE_loaded(sample)
+                condition = c[i].unsqueeze(0) if len(c[i].shape) == 1 else c[i:i+1]
+                _, mu, _ = model(sample, condition)
+                latent_sample = mu.squeeze(0)
+            elif ae_type == 2:
+                # VAE with external conditions - use only the latent from VAE
+                sample = sample.unsqueeze(0)
+                _, _, mu, _ = model(sample)
+                latent_sample = mu.squeeze(0)
+            elif ae_type == 1:
+                #  VAE
+                sample = sample.unsqueeze(0)
+                _, _, mu, _ = model(sample)
                 latent_sample = mu.squeeze(0)
             else:
-                latent_sample = AE_loaded.encoder(sample)
+                #  AE
+                latent_sample = model.encoder(sample)
+            
             latent_vectors.append(latent_sample)
+        
         # to numpy
         latent_vectors = torch.stack(latent_vectors).numpy()
         return latent_vectors
+  
     
 def _plot_latent_space(latent_vectors, y_train, show=False):
     """
