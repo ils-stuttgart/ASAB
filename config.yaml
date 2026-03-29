@@ -1,0 +1,10 @@
+monte_carlo:
+  epsilon: 0.5
+  n_samples: 100
+  random_state: 42
+
+visualization:
+  figsize: [3, 3]
+  alpha_cluster: 1
+  alpha_samples: 0.9
+  show_circle: true
