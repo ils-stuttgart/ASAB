@@ -8,88 +8,65 @@ import matplotlib.pyplot as plt
 import os
 import numpy as np
 import pandas as pd
+import torch.nn.functional as F
 
 
 
-## encode ##
-def _construct_latent_vectors_list(
-    checkpoint_path: Path,
-    X_training_tensor: torch.Tensor,
-    input_dim: int,
-    latent_dim: int, 
-    ae_type: int,
-    c: torch.Tensor = None,
-    dataset: str = 'adima',
-    class_size: int = 4):
+def _encode(target_class: int,
+            num_classes: int,
+            input_dim: int,
+            latent_dim: int,
+            checkpoint_path: Path,
+            dataset: str = 'mnist',
+            X_train_tensor: torch.Tensor = None,
+            y_train: torch.Tensor = None):
+        """
+        add description
+        """
+        model = CVAE(input_dim=input_dim, latent_dim=latent_dim, dataset=dataset, class_size=num_classes)
+        model.load_state_dict(torch.load(checkpoint_path))
+        model.eval()  # set to evaluation mode
+        
+        labels_tensor = torch.tensor(y_train, dtype=torch.long)
+        one_hot_labels = F.one_hot(labels_tensor, num_classes=num_classes).float()
+
+        # mask target class
+        assert isinstance(target_class, int)
+        mask = y_train == target_class
+        X_input = X_train_tensor[mask]
+        c_ = one_hot_labels[mask]
+
+        with torch.no_grad():
+            x_enc = model.cnn(X_input) if model.cnn is not None else X_input
+            # after the cnn, concat x with the condition
+            h = model.encoder(torch.cat([x_enc, c_], 1))
+            mu_ = model.fc21(h)
+        return mu_
+
+def _decode(mu_: torch.Tensor,
+            target_class: int,
+            num_classes: int,
+            input_dim: int,
+            latent_dim: int,
+            checkpoint_path: Path,
+            dataset: str = 'mnist'):
     """
-    extract the full set of latent vectors for X_training_tensor.
-
-    args:
-        checkpoint_path (str) (autoencoder .pth file)  
-        X_training_tensor (Tensor)  
-        input_dim (int) (encoder input size)  
-        latent_dim (int) (bottleneck size)  
-        ae_type (int): 0=AE, 1=VAE, 2=VAE with external classes, 3=CVAE
-        c (Tensor, optional): condition/class tensor for CVAE (one-hot encoded)
-        dataset (str): dataset type for CVAE ('adima' or 'mnist')
-        class_size (int): number of classes for CVAE
-
-    return:
-        latent_vectors (list containing the latent vector for every sample)
+    add description
     """
-    if ae_type == 3:
-        # Conditional VAE
-        model = CVAE(input_dim=input_dim, latent_dim=latent_dim, dataset=dataset, class_size=class_size)
-        if c is None:
-            raise ValueError("CVAE requires condition tensor 'c' (one-hot encoded classes)")
-    elif ae_type == 0:
-        from agile_ima_ml.autoencoders.train import AE
-        model = AE(input_dim=input_dim, latent_dim=latent_dim)
-    elif ae_type == 1:
-        from agile_ima_ml.autoencoders.train_vae import VAE
-        model = VAE(input_dim=input_dim, latent_dim=latent_dim)
-    elif ae_type == 2:
-        # VAE with external conditions (treated as regular VAE for encoding)
-        from agile_ima_ml.autoencoders.train_vae import VAE
-        model = VAE(input_dim=input_dim, latent_dim=latent_dim)
-    else:
-        raise Exception(f"Unknown ae_type: {ae_type}")
-    
-    print(f"loading model from {checkpoint_path}")
+    model = CVAE(input_dim=input_dim, latent_dim=latent_dim, dataset=dataset, class_size=num_classes)
     model.load_state_dict(torch.load(checkpoint_path))
     model.eval()  # set to evaluation mode
     
+    c_target = F.one_hot(torch.tensor([target_class]), num_classes=num_classes).float()
+    
     with torch.no_grad():
-        latent_vectors = []
-        for i in range(len(X_training_tensor)):
-            sample = X_training_tensor[i]
-            
-            if ae_type == 3:
-                # CVAE: needs both sample and condition
-                sample = sample.unsqueeze(0)
-                condition = c[i].unsqueeze(0) if len(c[i].shape) == 1 else c[i:i+1]
-                _, mu, _ = model(sample, condition)
-                latent_sample = mu.squeeze(0)
-            elif ae_type == 2:
-                # VAE with external conditions - use only the latent from VAE
-                sample = sample.unsqueeze(0)
-                _, _, mu, _ = model(sample)
-                latent_sample = mu.squeeze(0)
-            elif ae_type == 1:
-                #  VAE
-                sample = sample.unsqueeze(0)
-                _, _, mu, _ = model(sample)
-                latent_sample = mu.squeeze(0)
-            else:
-                #  AE
-                latent_sample = model.encoder(sample)
-            
-            latent_vectors.append(latent_sample)
-        
-        # to numpy
-        latent_vectors = torch.stack(latent_vectors).numpy()
-        return latent_vectors
-  
+        batch_size = mu_.shape[0]
+        c_expanded = c_target.repeat(batch_size, 1)
+        dec_inputs = torch.cat([mu_, c_expanded], 1)
+        recon = model.decoder(dec_inputs)
+    return recon
+
+
     
 def _plot_latent_space(latent_vectors, y_train, show=False):
     """
@@ -125,85 +102,3 @@ def _save_vectors_to_csv(vectors, y_train, output_path, filename, save=False):
     df.insert(0, 'Spannung', y_train)
     df.to_csv(os.path.join(output_path, filename), index=False)
     print(f"Latent vectors saved to {output_path} as {filename}")
-
-
-## decode ##
-def _reconstuct_from_latent_vectors_list(
-    checkpoint_path: str,
-    latent_vectors: torch.Tensor,
-    input_dim: int, # the reconstruction will have this size
-    latent_dim: int):
-    """
-    reconstruct the samples from the latent vectors list.
-    args:
-        checkpoint_path (str) (autoencoder .pth file)  
-        latent_vectors (Tensor)  
-        input_dim (int) (encoder input size)  
-        latent_dim (int) (bottleneck size)  
-
-    return:
-        decoded vectors list from a latent vector list
-    """
-    AE_loaded = AE(input_dim=input_dim, latent_dim=latent_dim)
-    AE_loaded.load_state_dict(torch.load(checkpoint_path))
-    AE_loaded.eval()  # set to evaluation mode
-    with torch.no_grad():
-        recon_vectors = []
-        for i in range(len(latent_vectors)):
-            sample = latent_vectors[i]
-            sample = torch.tensor(sample, dtype=torch.float32)
-            recon_sample = AE_loaded.decoder(sample)
-            recon_vectors.append(recon_sample)
-        # to numpy
-        recon_vectors = torch.stack(recon_vectors).numpy()
-        return recon_vectors
-    
-# sampling
-
-def _bounds(latent, mask):
-    """
-    min & max per dimension for the chosen class (mask is boolean)
-    the function should be able to handle both numpy array and pytorch tensors
-    same way of indexing and same min max methods
-    """
-    block = latent[mask]
-    return block.min(0), block.max(0)          
-
-def _sample_box_points(vmin, vmax, n, latent_dim=1):
-    """sample n points uniformly in the bounding box"""
-        # for the 1D case a "1D" circle would be sufficient
-        # 2D case: sample in the rectangle
-    if latent_dim == 1:
-        x_samples = np.random.uniform(vmin[0], vmax[0], n)
-        return np.c_[x_samples]
-    if latent_dim == 2:
-        x_samples = np.random.uniform(vmin[0], vmax[0], n)    
-        y_samples = np.random.uniform(vmin[1], vmax[1], n)
-        return np.c_[x_samples, y_samples]
-
-def _sample_diag_points(vmin, vmax, n=200):
-    """diagonal from (vmin,x) to (vmax,y)"""
-    t = np.linspace(0, 1, n)
-    return np.c_[vmin[0] + t*(vmax[0]-vmin[0]),
-                 vmax[1] - t*(vmax[1]-vmin[1])]
-
-def _sample_circle_points(vmin, vmax, n, latent_dim=1):
-    """sample n points uniformly inside a circle"""
-    if latent_dim == 1:
-        # 1D case: sample along the diameter
-        center = (vmin[0] + vmax[0]) / 2
-        radius = (vmax[0] - vmin[0]) / 2
-        return np.random.uniform(center - radius, center + radius, (n, 1))
-    else:
-        # 2D case: sample inside circle using polar coordinates
-        center_x = (vmin[0] + vmax[0]) / 2
-        center_y = (vmin[1] + vmax[1]) / 2
-        radius = np.sqrt(((vmax[0] - vmin[0])/2)**2 + ((vmax[1] - vmin[1])/2)**2)
-        
-        # Sample using polar coordinates for uniform distribution
-        r = radius * np.sqrt(np.random.uniform(0, 1, n))
-        theta = np.random.uniform(0, 2*np.pi, n)
-        
-        x = center_x + r * np.cos(theta)
-        y = center_y + r * np.sin(theta)
-        return np.c_[x, y]
