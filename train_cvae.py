@@ -22,8 +22,6 @@ import os
 import glob
 from pathlib import Path
 
-from data.scripts.rotate_mnist import RotatedMNISTDataset
-
 
 def one_hot(labels, class_size):
     targets = torch.zeros(labels.size(0), class_size)
@@ -168,6 +166,8 @@ def learn(epochs, train_loader, vae, loss_fn, optimizer):
             else:
                 data, labels = batch
                 rot_target = None
+            # data from the train loader is torch.Size([16, 1, 28, 28])
+            data = data.view(data.size(0), -1)  # flatten it to [batch_size, 784]
             labels = one_hot(labels, vae.calss_size)
             recon_batch, mu, log_var = vae(data, labels)
             optimizer.zero_grad()
@@ -205,7 +205,8 @@ def main():
     args = parser.parse_args()
 
     if args.dataset == 'mnist':
-        dataset = RotatedMNISTDataset(train=True)   # must return: data, label, rot_target
+        transform = transforms.Compose([transforms.ToTensor()])
+        dataset = datasets.MNIST(root='./data', train=True, download=True, transform=transform)
         train_loader = DataLoader(dataset, batch_size=args.batch_size, shuffle=True)
         input_dim = 784
         class_size = 10
