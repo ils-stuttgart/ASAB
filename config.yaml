@@ -1,5 +1,6 @@
+## Configuration for Monte Carlo
 monte_carlo:
-  epsilon: 0.5
+  epsilon: 0.1
   n_samples: 100
   random_state: 42
 
@@ -8,3 +9,5 @@ visualization:
   alpha_cluster: 1
   alpha_samples: 0.9
   show_circle: true
+
+## Configuration for NN training
