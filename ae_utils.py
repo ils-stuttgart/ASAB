@@ -19,15 +19,16 @@ def _encode(target_class: int,
             checkpoint_path: Path,
             dataset: str = 'mnist',
             X_train_tensor: torch.Tensor = None,
-            y_train: torch.Tensor = None):
+            y_train: torch.Tensor = None,
+            image_shape=None):
         """
         add description
         """
-        model = CVAE(input_dim=input_dim, latent_dim=latent_dim, dataset=dataset, class_size=num_classes)
+        model = CVAE(input_dim=input_dim, latent_dim=latent_dim, dataset=dataset, class_size=num_classes, image_shape=image_shape)
         model.load_state_dict(torch.load(checkpoint_path))
         model.eval()  # set to evaluation mode
         
-        labels_tensor = torch.tensor(y_train, dtype=torch.long)
+        labels_tensor = torch.as_tensor(y_train, dtype=torch.long)
         one_hot_labels = F.one_hot(labels_tensor, num_classes=num_classes).float()
 
         # mask target class
@@ -49,11 +50,12 @@ def _decode(mu_: torch.Tensor,
             input_dim: int,
             latent_dim: int,
             checkpoint_path: Path,
-            dataset: str = 'mnist'):
+            dataset: str = 'mnist',
+            image_shape=None):
     """
     add description
     """
-    model = CVAE(input_dim=input_dim, latent_dim=latent_dim, dataset=dataset, class_size=num_classes)
+    model = CVAE(input_dim=input_dim, latent_dim=latent_dim, dataset=dataset, class_size=num_classes, image_shape=image_shape)
     model.load_state_dict(torch.load(checkpoint_path))
     model.eval()  # set to evaluation mode
     
@@ -64,6 +66,9 @@ def _decode(mu_: torch.Tensor,
         c_expanded = c_target.repeat(batch_size, 1)
         dec_inputs = torch.cat([mu_, c_expanded], 1)
         recon = model.decoder(dec_inputs)
+        if model.is_image:
+            recon = model.sigmoid(recon)
+            recon = recon.view(-1, *image_shape)
     return recon
 
 
