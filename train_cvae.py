@@ -29,34 +29,42 @@ def one_hot(labels, class_size):
         targets[i, label] = 1
     return targets
 
-#cnn encoder for mnist
 class CNNEncoder(nn.Module):
-    def __init__(self):
+    def __init__(self, image_shape):
         super().__init__()
+        self.image_shape = image_shape
         self.conv = nn.Sequential(
-            nn.Conv2d(1, 32, 3, stride=1, padding=1),
+            nn.Conv2d(image_shape[0], 32, 4, stride=2, padding=1),
             nn.ReLU(),
-            nn.MaxPool2d(2),
-            nn.Conv2d(32, 64, 3, stride=1, padding=1),
+            nn.Conv2d(32, 64, 4, stride=2, padding=1),
             nn.ReLU(),
-            nn.MaxPool2d(2)
+            nn.Conv2d(64, 128, 4, stride=2, padding=1),
+            nn.ReLU(),
+            nn.Flatten()
         )
-        self.fc = nn.Linear(64 * 7 * 7, 128)
-    
+        with torch.no_grad():
+            flat_dim = self.conv(torch.zeros(1, *image_shape)).shape[1]
+        self.fc = nn.Linear(flat_dim, 128)
+
     def forward(self, x):
-        x = x.view(-1, 1, 28, 28)
+        if x.dim() == 2:
+            x = x.view(-1, *self.image_shape)
         x = self.conv(x)
-        x = x.view(x.size(0), -1)
         x = self.fc(x)
         return x
 
 # cvae
 class CVAE(nn.Module):
-    def __init__(self, input_dim, latent_dim, dataset, class_size):
+    def __init__(self, input_dim, latent_dim, dataset, class_size, image_shape=None):
         super().__init__()
         self.input_dim = input_dim
+        self.image_shape = image_shape
+        self.is_image = dataset == 'scenairo'
         if dataset == 'mnist':  # MNIST
-            self.cnn = CNNEncoder()
+            self.cnn = CNNEncoder((1, 28, 28))
+            encoder_output_dim = 128
+        elif self.is_image:
+            self.cnn = CNNEncoder(image_shape)
             encoder_output_dim = 128
         else:  # ADIMA
             self.cnn = None
@@ -100,7 +108,9 @@ class CVAE(nn.Module):
         # decode
         dec_inputs = torch.cat([z, c], 1) # (bs, latent_dim+class_size)
         recon = self.decoder(dec_inputs)
-        # recon = self.sigmoid(recon)
+        if self.is_image:
+            recon = self.sigmoid(recon)
+            recon = recon.view(-1, *self.image_shape)
 
         return recon, mu, log_var
 
@@ -166,8 +176,9 @@ def learn(epochs, train_loader, vae, loss_fn, optimizer):
             else:
                 data, labels = batch
                 rot_target = None
-            # data from the train loader is torch.Size([16, 1, 28, 28])
-            data = data.view(data.size(0), -1)  # flatten it to [batch_size, 784]
+            if not vae.is_image:
+                # data from the train loader is torch.Size([16, 1, 28, 28])
+                data = data.view(data.size(0), -1)  # flatten it to [batch_size, 784]
             labels = one_hot(labels, vae.calss_size)
             recon_batch, mu, log_var = vae(data, labels)
             optimizer.zero_grad()
@@ -196,20 +207,35 @@ def main():
     root = Path(__file__).parent.parent.resolve()
     parser = argparse.ArgumentParser()
     parser.add_argument('--model_name', default='vae_')
-    parser.add_argument('--dataset', default='mnist')
+    parser.add_argument('--dataset', default='')
     parser.add_argument('--data_csv', default=root/'data/adima/training/fixed_current_training_data.csv')
     parser.add_argument('--model_dir', default='./runs')
     parser.add_argument('--epochs', type=int, default=200)
     parser.add_argument('--batch_size', type=int, default=16)
     parser.add_argument('--latent_dim', type=int, default=12)
+    parser.add_argument('--data_root', default='DATA/ScenAIro')
     args = parser.parse_args()
 
+    if args.dataset == None:
+        raise ValueError("enter --dataset 'mnist' or 'senairo' ")
     if args.dataset == 'mnist':
         transform = transforms.Compose([transforms.ToTensor()])
         dataset = datasets.MNIST(root='./data', train=True, download=True, transform=transform)
         train_loader = DataLoader(dataset, batch_size=args.batch_size, shuffle=True)
         input_dim = 784
         class_size = 10
+        image_shape = None
+    elif args.dataset == 'scenairo':
+        transform = transforms.Compose([
+            transforms.Resize((args.image_height, args.image_width)),
+            transforms.ToTensor()
+        ])
+        dataset = datasets.ImageFolder(Path(args.data_root) / 'train', transform=transform)
+        train_loader = DataLoader(dataset, batch_size=args.batch_size, shuffle=True)
+        image_shape = (3, 72, 128)
+        input_dim = image_shape[0] * image_shape[1] * image_shape[2]
+        class_size = len(dataset.classes)
+        print("Class mapping:", dataset.class_to_idx)
     else:
         # to train with only green LEDs
         green_leds = args.data_csv
@@ -225,9 +251,10 @@ def main():
         valid_loader = DataLoader(X_valid_tensor, batch_size=16, shuffle=False)
         input_dim = 19
         class_size = 4
+        image_shape = None
 
     # training params
-    cvae_model = CVAE(input_dim=input_dim, latent_dim=args.latent_dim, dataset="mnist", class_size=class_size)
+    cvae_model = CVAE(input_dim=input_dim, latent_dim=args.latent_dim, dataset=args.dataset, class_size=class_size, image_shape=image_shape)
     cvae_model = cvae_model.train() # set to training mode
     loss_fn = nn.GaussianNLLLoss(reduction='sum', eps=1e-6)  # Learn per-feature variance during reconstruction
     optimizer = optim.Adam(cvae_model.parameters(), lr=1e-3)
@@ -238,7 +265,7 @@ def main():
     log_dir = f"{args.model_dir}/{args.model_name}"
     os.makedirs(log_dir, exist_ok=True)
     # torch.save(AutoEnc.state_dict(), f"ae-runs/{args.model_name}/{args.model_name}.pth")
-    n = max([int(f.split('_')[1].split('.')[0]) for f in glob.glob(f'{args.model_name}*.pth')] + [0]) + 1
+    n = max([int(Path(f).stem.split('_')[1]) for f in glob.glob(f'{log_dir}/vae_*.pth')] + [0]) + 1
     torch.save(cvae_model.state_dict(), f"{args.model_dir}/{args.model_name}/vae_{n}.pth")
 
     print(f"Model saved to {args.model_dir}/{args.model_name}/vae_{n}.pth")    
