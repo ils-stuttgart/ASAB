@@ -227,7 +227,7 @@ def main():
         image_shape = None
     elif args.dataset == 'scenairo':
         transform = transforms.Compose([
-            transforms.Resize((args.image_height, args.image_width)),
+            transforms.Resize((72, 128)),
             transforms.ToTensor()
         ])
         dataset = datasets.ImageFolder(Path(args.data_root) / 'train', transform=transform)
