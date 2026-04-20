@@ -114,13 +114,40 @@ class CVAE(nn.Module):
 
         return recon, mu, log_var
 
-def load_data(data_csv, dataset='adima', single_class=None):
+def load_data(data_csv=None, dataset='adima', single_class=None, batch_size=16, data_root='DATA/ScenAIro'):
     if dataset == 'mnist':
         transform = transforms.Compose([transforms.ToTensor()])
         mnist_train = datasets.MNIST(root='./data', train=True, download=True, transform=transform)
+        train_loader = DataLoader(mnist_train, batch_size=batch_size, shuffle=True)
         X = mnist_train.data.reshape(-1, 784).float() / 255.0
         X = X.numpy()  # Convert tensor to numpy for train_test_split
         y = mnist_train.targets.numpy()  # Convert tensor to numpy
+        input_dim = 784
+        class_size = 10
+        image_shape = None
+
+    elif dataset == 'scenairo':
+        image_shape = (3, 72, 128)
+        transform = transforms.Compose([
+            transforms.Resize((image_shape[1], image_shape[2])),
+            transforms.ToTensor()
+        ])
+        image_dataset = datasets.ImageFolder(Path(data_root) / 'train', transform=transform)
+        train_loader = DataLoader(image_dataset, batch_size=batch_size, shuffle=True)
+        X_train_tensor = torch.stack([image_dataset[i][0] for i in range(len(image_dataset))])
+        y_train = torch.tensor(image_dataset.targets)
+        print("Class mapping:", image_dataset.class_to_idx)
+        return {"train_loader": train_loader,
+                "X_train_tensor": X_train_tensor,
+                "X_valid_tensor": None,
+                "X": image_dataset,
+                "X_train": image_dataset,
+                "y_train": y_train,
+                "input_dim": image_shape[0] * image_shape[1] * image_shape[2],
+                "class_size": len(image_dataset.classes),
+                "image_shape": image_shape,
+                "class_to_idx": image_dataset.class_to_idx,}
+    
     else:
         data = data_csv
         data= pd.read_csv(data)
@@ -148,7 +175,28 @@ def load_data(data_csv, dataset='adima', single_class=None):
     else:
         X_valid_tensor = torch.tensor(X_valid.values, dtype=torch.float32)
     
-    return X_train_tensor, X_valid_tensor, X, X_train, y_train
+    if dataset != 'mnist':
+        X_train_tensor_min = X_train_tensor.min()
+        X_train_tensor_max = X_train_tensor.max()
+        X_train_tensor = (X_train_tensor - X_train_tensor_min) / (X_train_tensor_max - X_train_tensor_min + 1e-8)
+        label_digits = {"blue": 0, "green": 1, "red": 2, "yellow": 3}
+        y_train_mapped = y_train.map(label_digits).astype(int)
+        train_loader = DataLoader(TensorDataset(X_train_tensor, torch.tensor(y_train_mapped.values)), batch_size=batch_size, shuffle=True)
+        input_dim = 19
+        class_size = 4
+        image_shape = None
+
+    return {
+        "train_loader": train_loader,
+        "X_train_tensor": X_train_tensor,
+        "X_valid_tensor": X_valid_tensor,
+        "X": X,
+        "X_train": X_train,
+        "y_train": y_train,
+        "input_dim": input_dim,
+        "class_size": class_size,
+        "image_shape": image_shape,
+    }
 
 # Reconstruction + KL divergence losses summed over all elements and batch
 def loss_function(recon_x, x, mu, logvar):
@@ -216,42 +264,14 @@ def main():
     parser.add_argument('--data_root', default='DATA/ScenAIro')
     args = parser.parse_args()
 
-    if args.dataset == None:
-        raise ValueError("enter --dataset 'mnist' or 'senairo' ")
-    if args.dataset == 'mnist':
-        transform = transforms.Compose([transforms.ToTensor()])
-        dataset = datasets.MNIST(root='./data', train=True, download=True, transform=transform)
-        train_loader = DataLoader(dataset, batch_size=args.batch_size, shuffle=True)
-        input_dim = 784
-        class_size = 10
-        image_shape = None
-    elif args.dataset == 'scenairo':
-        transform = transforms.Compose([
-            transforms.Resize((72, 128)),
-            transforms.ToTensor()
-        ])
-        dataset = datasets.ImageFolder(Path(args.data_root) / 'train', transform=transform)
-        train_loader = DataLoader(dataset, batch_size=args.batch_size, shuffle=True)
-        image_shape = (3, 72, 128)
-        input_dim = image_shape[0] * image_shape[1] * image_shape[2]
-        class_size = len(dataset.classes)
-        print("Class mapping:", dataset.class_to_idx)
-    else:
-        # to train with only green LEDs
-        green_leds = args.data_csv
-        X_train_tensor, X_valid_tensor, X, _, Y_train = load_data(args.data_csv, args.dataset, single_class=None)
-        X_train_tensor_min = X_train_tensor.min()
-        X_train_tensor_max = X_train_tensor.max()
-        X_train_tensor = (X_train_tensor - X_train_tensor_min) / (X_train_tensor_max - X_train_tensor_min + 1e-8)
-        print("Y_train: ", Y_train)
-        label_digits = {"blue": 0, "green": 1, "red": 2, "yellow": 3}
-        y_train_mapped = Y_train.map(label_digits).astype(int)
-        dataset = TensorDataset(X_train_tensor, torch.tensor(y_train_mapped.values))  # include the labels in the torch dataloader
-        train_loader = DataLoader(dataset, batch_size=args.batch_size, shuffle=True)
-        valid_loader = DataLoader(X_valid_tensor, batch_size=16, shuffle=False)
-        input_dim = 19
-        class_size = 4
-        image_shape = None
+    if not args.dataset:
+        raise ValueError("enter --dataset 'mnist' or 'scenairo'")
+
+    data = load_data(args.data_csv, args.dataset, batch_size=args.batch_size, data_root=args.data_root)
+    train_loader = data["train_loader"]
+    input_dim = data["input_dim"]
+    class_size = data["class_size"]
+    image_shape = data["image_shape"]
 
     # training params
     cvae_model = CVAE(input_dim=input_dim, latent_dim=args.latent_dim, dataset=args.dataset, class_size=class_size, image_shape=image_shape)
