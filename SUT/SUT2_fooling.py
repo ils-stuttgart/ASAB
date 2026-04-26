@@ -407,24 +407,33 @@ def run_fooling_evaluation(config: FoolingConfig) -> List[dict]:
 
 
 def main() -> None:
-    config = FoolingConfig(
-        model_path="artifacts/sut2_classifier.keras",
-        decoded_root_dir="runs/scenairo2004/cluster_sampling/decoded_cluster_samples",
-        epsilon=0.9,
-        m_samples_per_cluster=1000,
-        output_dir="runs/scenairo2004/cluster_sampling/fooling_results",
-        expected_height=72,
-        expected_width=128,
-        expected_channels=3,
-        use_range_validity=True,
-        valid_min=0.0,
-        valid_max=1.0,
-        save_per_cluster_predictions=True,
-        save_fooling_images=True,
-        save_fooling_pngs=True,
-    )
+    repo_root = Path(__file__).resolve().parents[1]
+    base_dir = repo_root / "runs/scenairo2004/cluster_sampling"
+    epsilon_dirs = sorted(base_dir.glob("epsilon_*"))
 
-    run_fooling_evaluation(config)
+    if not epsilon_dirs:
+        raise FileNotFoundError(f"No epsilon_* folders found inside: {base_dir.resolve()}")
+
+    for epsilon_dir in epsilon_dirs:
+        epsilon = float(epsilon_dir.name.removeprefix("epsilon_"))
+        config = FoolingConfig(
+            model_path=str(repo_root / "artifacts/sut2_classifier.keras"),
+            decoded_root_dir=str(epsilon_dir / "decoded_cluster_samples"),
+            epsilon=epsilon,
+            m_samples_per_cluster=1000,
+            output_dir=str(epsilon_dir / "fooling_results"),
+            expected_height=72,
+            expected_width=128,
+            expected_channels=3,
+            use_range_validity=True,
+            valid_min=0.0,
+            valid_max=1.0,
+            save_per_cluster_predictions=True,
+            save_fooling_images=True,
+            save_fooling_pngs=True,
+        )
+
+        run_fooling_evaluation(config)
 
 
 if __name__ == "__main__":
