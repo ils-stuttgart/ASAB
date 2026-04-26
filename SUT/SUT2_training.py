@@ -27,8 +27,8 @@ from tensorflow.keras.preprocessing.image import ImageDataGenerator
 
 @dataclass
 class TrainConfig:
-    data_root: str = r"C:\Users\akhiat\Desktop\Hackathon\ASAB\DATA\ScenAIro"
-    image_size: Tuple[int, int] = (100, 100)
+    data_root: str = "DATA/ScenAIro"
+    image_size: Tuple[int, int] = (72, 128)
     batch_size: int = 64
     epochs: int = 10
     seed: int = 42
@@ -39,7 +39,7 @@ class TrainConfig:
     test_dirname: str = "test"
     class_mode: str = "binary"
 
-    artifacts_dir: str = r"C:\Users\akhiat\Desktop\Hackathon\ASAB\artifacts"
+    artifacts_dir: str = "artifacts"
     keras_model_name: str = "sut2_classifier.keras"
     saved_model_dirname: str = "sut2_saved_model"
     onnx_model_name: str = "sut2_classifier.onnx"
@@ -436,16 +436,16 @@ def run_training_pipeline(config: TrainConfig):
 
 if __name__ == "__main__":
     config = TrainConfig(
-        data_root=r"C:\Users\akhiat\Desktop\Hackathon\ASAB\DATA\ScenAIro",
-        image_size=(100, 100),
+        data_root="DATA/ScenAIro",
+        image_size=(72, 128),
         batch_size=64,
-        epochs=2,
+        epochs=20,
         seed=42,
         learning_rate=1e-3,
-        artifacts_dir=r"C:\Users\akhiat\Desktop\Hackathon\ASAB\artifacts",
-        export_saved_model=True,
-        export_onnx=True,
-        verify_onnx_inference=True,
+        artifacts_dir="artifacts",
+        export_saved_model=False,
+        export_onnx=False,
+        verify_onnx_inference=False,
         onnx_opset=13,
     )
 
