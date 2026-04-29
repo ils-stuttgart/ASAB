@@ -1,0 +1,97 @@
+{
+  "images": [
+    {
+      "file_name": "2026-01-27_EDDV_runway_day_val009.png",
+      "id": "2026-01-27_EDDV_runway_day_val009.png",
+      "width": 2560,
+      "height": 1440
+    }
+  ],
+  "annotations": [
+    {
+      "id": 0,
+      "image_id": "2026-01-27_EDDV_runway_day_val009.png",
+      "category_id": 1,
+      "bbox": [
+        1184,
+        295,
+        192,
+        377
+      ],
+      "segmentation": [
+        [
+          [
+            1269,
+            672,
+            1291,
+            672,
+            1376,
+            295,
+            1184,
+            295
+          ]
+        ]
+      ],
+      "area": 72384,
+      "iscrowd": 0
+    }
+  ],
+  "categories": [
+    {
+      "id": 1,
+      "name": "runway",
+      "supercategory": "infrastructure"
+    }
+  ],
+  "runway_data": {
+    "name": "Hannover",
+    "icao_code": "EDDV",
+    "runway_name": "9L",
+    "runway_width": 45.0,
+    "runway_length": 3198.0,
+    "runway_heading": 92.56987,
+    "runway_center": {
+      "latitude": 52.467599,
+      "longitude": 9.676213,
+      "altitude": 52.781002
+    },
+    "start_height": 52.781002,
+    "end_height": 51.781002
+  },
+  "landing_approach_cone": {
+    "apex": [
+      2000.0,
+      0.0,
+      100.0
+    ],
+    "lateral_angle_left": 0.0,
+    "lateral_angle_right": 0.0,
+    "vertical_min_angle": 0.0,
+    "vertical_max_angle": 0.0,
+    "max_distance": 0.0,
+    "number_of_points": 3,
+    "distribution": {
+      "type": "Normal Distribution",
+      "apply_x": true,
+      "apply_y": true
+    }
+  },
+  "position_of_aircraft": [
+    52.466789466703254,
+    9.705611876930334,
+    152.781002
+  ],
+  "distance_aircraft_2_runway": {
+    "ground_distance_in_meters": 2000.0,
+    "altitude_difference_in_meters": 100.0
+  },
+  "aircraft_orientation": {
+    "pitch": 0.0,
+    "yaw": 0.0,
+    "roll": 0.0
+  },
+  "daytime": {
+    "hours": 14,
+    "minutes": 22
+  }
+}

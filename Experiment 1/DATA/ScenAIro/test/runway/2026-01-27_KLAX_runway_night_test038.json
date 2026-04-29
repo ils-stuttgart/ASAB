@@ -1,0 +1,97 @@
+{
+  "images": [
+    {
+      "file_name": "2026-01-27_KLAX_runway_night_test038.png",
+      "id": "2026-01-27_KLAX_runway_night_test038.png",
+      "width": 2560,
+      "height": 1440
+    }
+  ],
+  "annotations": [
+    {
+      "id": 0,
+      "image_id": "2026-01-27_KLAX_runway_night_test038.png",
+      "category_id": 1,
+      "bbox": [
+        -4,
+        -4864,
+        2568,
+        5541
+      ],
+      "segmentation": [
+        [
+          [
+            1270,
+            677,
+            1290,
+            677,
+            2564,
+            -4864,
+            -4,
+            -4863
+          ]
+        ]
+      ],
+      "area": 14229288,
+      "iscrowd": 0
+    }
+  ],
+  "categories": [
+    {
+      "id": 1,
+      "name": "runway",
+      "supercategory": "infrastructure"
+    }
+  ],
+  "runway_data": {
+    "name": "Los Angeles International Airport",
+    "icao_code": "KLAX",
+    "runway_name": "R25",
+    "runway_width": 46.0,
+    "runway_length": 3939.0,
+    "runway_heading": 82.960899,
+    "runway_center": {
+      "latitude": 33.937723,
+      "longitude": -118.400929,
+      "altitude": 34.022
+    },
+    "start_height": 34.022,
+    "end_height": 34.022
+  },
+  "landing_approach_cone": {
+    "apex": [
+      2000.0,
+      0.0,
+      100.0
+    ],
+    "lateral_angle_left": 0.0,
+    "lateral_angle_right": 0.0,
+    "vertical_min_angle": 0.0,
+    "vertical_max_angle": 0.0,
+    "max_distance": 0.0,
+    "number_of_points": 3,
+    "distribution": {
+      "type": "Normal Distribution",
+      "apply_x": true,
+      "apply_y": true
+    }
+  },
+  "position_of_aircraft": [
+    33.93993074319327,
+    -118.3794586855742,
+    134.022
+  ],
+  "distance_aircraft_2_runway": {
+    "ground_distance_in_meters": 2000.0,
+    "altitude_difference_in_meters": 100.0
+  },
+  "aircraft_orientation": {
+    "pitch": 0.0,
+    "yaw": 0.0,
+    "roll": 0.0
+  },
+  "daytime": {
+    "hours": 0,
+    "minutes": 2
+  }
+}

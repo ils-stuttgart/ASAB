@@ -1,0 +1,97 @@
+{
+  "images": [
+    {
+      "file_name": "2026-01-27_ELLX_runway_night_train090.png",
+      "id": "2026-01-27_ELLX_runway_night_train090.png",
+      "width": 2560,
+      "height": 1440
+    }
+  ],
+  "annotations": [
+    {
+      "id": 0,
+      "image_id": "2026-01-27_ELLX_runway_night_train090.png",
+      "category_id": 1,
+      "bbox": [
+        -36972,
+        -159093,
+        76674,
+        159767
+      ],
+      "segmentation": [
+        [
+          [
+            1270,
+            674,
+            1290,
+            674,
+            39702,
+            -159093,
+            -36972,
+            -158432
+          ]
+        ]
+      ],
+      "area": 12249974958,
+      "iscrowd": 0
+    }
+  ],
+  "categories": [
+    {
+      "id": 1,
+      "name": "runway",
+      "supercategory": "infrastructure"
+    }
+  ],
+  "runway_data": {
+    "name": "Luxembourg",
+    "icao_code": "ELLX",
+    "runway_name": "24",
+    "runway_width": 45.0,
+    "runway_length": 3998.0,
+    "runway_heading": 60.19931,
+    "runway_center": {
+      "latitude": 49.626451,
+      "longitude": 6.211552,
+      "altitude": 361.492004
+    },
+    "start_height": 367.8936,
+    "end_height": 354.1776
+  },
+  "landing_approach_cone": {
+    "apex": [
+      2000.0,
+      0.0,
+      100.0
+    ],
+    "lateral_angle_left": 0.0,
+    "lateral_angle_right": 0.0,
+    "vertical_min_angle": 0.0,
+    "vertical_max_angle": 0.0,
+    "max_distance": 0.0,
+    "number_of_points": 3,
+    "distribution": {
+      "type": "Normal Distribution",
+      "apply_x": true,
+      "apply_y": true
+    }
+  },
+  "position_of_aircraft": [
+    49.6353853125247,
+    6.2355775077074,
+    461.492004
+  ],
+  "distance_aircraft_2_runway": {
+    "ground_distance_in_meters": 2000.0,
+    "altitude_difference_in_meters": 100.0
+  },
+  "aircraft_orientation": {
+    "pitch": 0.0,
+    "yaw": 0.0,
+    "roll": 0.0
+  },
+  "daytime": {
+    "hours": 4,
+    "minutes": 34
+  }
+}

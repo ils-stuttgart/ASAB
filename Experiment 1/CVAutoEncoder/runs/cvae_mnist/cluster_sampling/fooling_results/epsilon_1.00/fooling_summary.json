@@ -1,0 +1,104 @@
+{
+  "rows": [
+    {
+      "class": 0,
+      "epsilon_ball": 1.0,
+      "M": 1000,
+      "total_samples": 1000,
+      "adversarial": 0,
+      "valid_adv": 0,
+      "asr_percent": 0.0,
+      "valid_rate_percent": 100.0
+    },
+    {
+      "class": 1,
+      "epsilon_ball": 1.0,
+      "M": 1000,
+      "total_samples": 1000,
+      "adversarial": 0,
+      "valid_adv": 0,
+      "asr_percent": 0.0,
+      "valid_rate_percent": 100.0
+    },
+    {
+      "class": 2,
+      "epsilon_ball": 1.0,
+      "M": 1000,
+      "total_samples": 1000,
+      "adversarial": 28,
+      "valid_adv": 28,
+      "asr_percent": 2.8,
+      "valid_rate_percent": 100.0
+    },
+    {
+      "class": 3,
+      "epsilon_ball": 1.0,
+      "M": 1000,
+      "total_samples": 1000,
+      "adversarial": 1,
+      "valid_adv": 1,
+      "asr_percent": 0.1,
+      "valid_rate_percent": 100.0
+    },
+    {
+      "class": 4,
+      "epsilon_ball": 1.0,
+      "M": 1000,
+      "total_samples": 1000,
+      "adversarial": 212,
+      "valid_adv": 212,
+      "asr_percent": 21.2,
+      "valid_rate_percent": 100.0
+    },
+    {
+      "class": 5,
+      "epsilon_ball": 1.0,
+      "M": 1000,
+      "total_samples": 1000,
+      "adversarial": 46,
+      "valid_adv": 46,
+      "asr_percent": 4.6,
+      "valid_rate_percent": 100.0
+    },
+    {
+      "class": 6,
+      "epsilon_ball": 1.0,
+      "M": 1000,
+      "total_samples": 1000,
+      "adversarial": 9,
+      "valid_adv": 9,
+      "asr_percent": 0.9,
+      "valid_rate_percent": 100.0
+    },
+    {
+      "class": 7,
+      "epsilon_ball": 1.0,
+      "M": 1000,
+      "total_samples": 1000,
+      "adversarial": 6,
+      "valid_adv": 6,
+      "asr_percent": 0.6,
+      "valid_rate_percent": 100.0
+    },
+    {
+      "class": 8,
+      "epsilon_ball": 1.0,
+      "M": 1000,
+      "total_samples": 1000,
+      "adversarial": 15,
+      "valid_adv": 15,
+      "asr_percent": 1.5,
+      "valid_rate_percent": 100.0
+    },
+    {
+      "class": 9,
+      "epsilon_ball": 1.0,
+      "M": 1000,
+      "total_samples": 1000,
+      "adversarial": 0,
+      "valid_adv": 0,
+      "asr_percent": 0.0,
+      "valid_rate_percent": 100.0
+    }
+  ]
+}
