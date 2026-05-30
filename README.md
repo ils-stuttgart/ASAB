@@ -47,7 +47,8 @@ Utilizing a Conditional Variational Autoencoder showed very good performance reg
 The main and most critical part for this was the recreation quality of the generated samples. The [Scenairo reconstruction](Figures/reconstruction performance Scenairo.png) shows the reconstruction performance of the CVAE for the Scenairo data.
 The reconstructed images for MNIST can be found in /Experiment 1/CVAutoEncoder/runs/cluster_sampling_by_label_new_area for each epsilon range. 
 The higher the epsilon the further the distance to the centroid of the distribution within the latent space.
-![Monte Carlo epsilon specimens](Experiment%202/monte_carlo_epsilon_specimens_readme.png)
+
+<img src="Experiment%202/monte_carlo_epsilon_specimens_readme.png" alt="Monte Carlo epsilon specimens" width="650">
 
 ------------------------
 System under Test
